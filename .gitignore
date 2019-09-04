@@ -24,17 +24,17 @@
 default.profraw
 
 ### Kotlin files generated in bootstrap
-Bootstrap/PrintableAsTree.kt
-Bootstrap/SwiftAST.kt
-Bootstrap/SwiftTranslator.kt
-Bootstrap/GryphonAST.kt
-Bootstrap/TranspilationPass.kt
 Bootstrap/ASTDumpDecoder.kt
 Bootstrap/Compiler.kt
-Bootstrap/OutputFileMap.kt
-Bootstrap/SourceFile.kt
 Bootstrap/Driver.kt
 Bootstrap/Extensions.kt
-Bootstrap/SharedUtilities.kt
+Bootstrap/GryphonAST.kt
 Bootstrap/KotlinTranslator.kt
 Bootstrap/LibraryTranspilationPass.kt
+Bootstrap/OutputFileMap.kt
+Bootstrap/PrintableAsTree.kt
+Bootstrap/SharedUtilities.kt
+Bootstrap/SourceFile.kt
+Bootstrap/SwiftAST.kt
+Bootstrap/SwiftTranslator.kt
+Bootstrap/TranspilationPass.kt
