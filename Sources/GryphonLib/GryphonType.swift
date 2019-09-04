@@ -106,7 +106,9 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 
 			var result = nonOptionalType
 
-			/// Checks for "?"s after the type
+			cleanLeadingWhitespace()
+
+			// Check for "?"s after the type
 			while index != string.endIndex, string[index] == "?" {
 				index = string.index(after: index)
 				result = .optional(subType: result)
@@ -178,36 +180,16 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			if string[index] == "(" {
 				index = string.index(after: index)
 
-				// Check if it's Void, a.k.a. `()`
-				if string[index] == ")" {
-					index = string.index(after: index)
-					return .namedType(typeName: "Void")
-				}
-
 				// Check for labels before the tuple type, i.e. `(bla: Int, foo: String)` should be
 				// parsed as `(Int, String)`
 
-				let subType1: GryphonType
-				guard let firstAttempt = parseType() else {
-					return nil
-				}
-				// If we read a label instead of a type, try again
-				if string[index] == ":" {
-					index = string.index(after: index)
-					cleanLeadingWhitespace()
-					guard let secondAttempt = parseType() else {
-						return nil
+				let tupleElements: ArrayClass<GryphonType> = []
+
+				while string[index] != ")" {
+					// Skip the comma if necessary
+					if string[index] == "," {
+						index = string.index(after: index)
 					}
-					subType1 = secondAttempt
-				}
-				else {
-					subType1 = firstAttempt
-				}
-
-				let tupleElements: ArrayClass<GryphonType> = [subType1]
-
-				while string[index] == "," {
-					index = string.index(after: index)
 
 					// Check for labels just as before
 					let newSubType: GryphonType
@@ -235,7 +217,13 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 				index = string.index(after: index)
 				cleanLeadingWhitespace()
 
-				// Check if it's a standard tuple or if it's part of a function type
+				// Check if it's a standard tuple or if it's part of a function type.
+				// Function types will have the "->" arrow after the tuple, possibly with a "throws"
+				// annotation before the arrow (i.e. in `(String) throws -> ()`).
+				if string[index...].hasPrefix("throws") {
+					index = string.index(index, offsetBy: "throws".count)
+					cleanLeadingWhitespace()
+				}
 
 				if string[index...].hasPrefix("->") {
 					// If it's a function type, skip the "->" and any possible whitespace after it
@@ -249,8 +237,11 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 					return .function(parameters: tupleElements, returnType: returnType)
 				}
 				else {
-					// If it's not a function it can still be a simple wrapping parameter
-					// i.e. ((String) -> String)?
+					// If it's not a function, it either can be `Void` (a.k.a. `()`), or a simple
+					// wrapping parameter (i.e. `((String) -> String)?`), or a normal tuple
+					if tupleElements.isEmpty {
+						return .namedType(typeName: "Void")
+					}
 					if tupleElements.count == 1 {
 						return tupleElements[0]
 					}
