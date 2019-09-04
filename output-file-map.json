@@ -1,4 +1,8 @@
 {
+	"Sources/GryphonLib/SwiftStandardLibrary.swift": {
+		"ast-dump": "Bootstrap/SwiftStandardLibrary.swiftASTDump",
+	},
+
 	"Sources/GryphonLib/ASTDumpDecoder.swift": {
 		"ast-dump": "Bootstrap/ASTDumpDecoder.swiftASTDump",
 		"kotlin": "Bootstrap/ASTDumpDecoder.kt",
@@ -35,6 +39,10 @@
 		"ast-dump": "Bootstrap/PrintableAsTree.swiftASTDump",
 		"kotlin": "Bootstrap/PrintableAsTree.kt",
 	},
+	"Sources/GryphonLib/SharedUtilities.swift": {
+		"ast-dump": "Bootstrap/SharedUtilities.swiftASTDump",
+		"kotlin": "Bootstrap/SharedUtilities.kt",
+	},
 	"Sources/GryphonLib/SourceFile.swift": {
 		"ast-dump": "Bootstrap/SourceFile.swiftASTDump",
 		"kotlin": "Bootstrap/SourceFile.kt",
@@ -51,14 +59,10 @@
 		"ast-dump": "Bootstrap/TranspilationPass.swiftASTDump",
 		"kotlin": "Bootstrap/TranspilationPass.kt",
 	},
-    "Sources/GryphonLib/SharedUtilities.swift": {
-        "ast-dump": "Bootstrap/SharedUtilities.swiftASTDump",
-        "kotlin": "Bootstrap/SharedUtilities.kt",
-    },
 
-    "Sources/GryphonLib/SwiftStandardLibrary.swift": {
-        "ast-dump": "Bootstrap/SwiftStandardLibrary.swiftASTDump",
-    },
+	"Sources/GryphonLib/Shell.swift": {
+		"ast-dump": "Bootstrap/Shell.swiftASTDump",
+	},
     "Sources/GryphonLib/Utilities.swift": {
         "ast-dump": "Bootstrap/Utilities.swiftASTDump",
     },

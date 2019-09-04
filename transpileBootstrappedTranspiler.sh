@@ -3,18 +3,20 @@
 	-output-file-map=output-file-map.json \
 	-indentation=4 \
 	-q \
+	\
 	Sources/GryphonLib/SwiftStandardLibrary.swift \
-	Sources/GryphonLib/PrintableAsTree.swift \
-	Sources/GryphonLib/SwiftAST.swift \
-	Sources/GryphonLib/SwiftTranslator.swift \
-	Sources/GryphonLib/GryphonAST.swift \
-	Sources/GryphonLib/TranspilationPass.swift \
+	\
 	Sources/GryphonLib/ASTDumpDecoder.swift \
 	Sources/GryphonLib/Compiler.swift \
-	Sources/GryphonLib/OutputFileMap.swift \
-	Sources/GryphonLib/SourceFile.swift \
 	Sources/GryphonLib/Driver.swift \
 	Sources/GryphonLib/Extensions.swift \
-	Sources/GryphonLib/SharedUtilities.swift \
+	Sources/GryphonLib/GryphonAST.swift \
 	Sources/GryphonLib/KotlinTranslator.swift \
-	Sources/GryphonLib/LibraryTranspilationPass.swift
+	Sources/GryphonLib/LibraryTranspilationPass.swift \
+	Sources/GryphonLib/OutputFileMap.swift \
+	Sources/GryphonLib/PrintableAsTree.swift \
+	Sources/GryphonLib/SharedUtilities.swift \
+	Sources/GryphonLib/SourceFile.swift \
+	Sources/GryphonLib/SwiftAST.swift \
+	Sources/GryphonLib/SwiftTranslator.swift \
+	Sources/GryphonLib/TranspilationPass.swift
