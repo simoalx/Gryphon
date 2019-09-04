@@ -24,6 +24,7 @@ kotlinc -include-runtime \
 	Bootstrap/Driver.kt \
 	Bootstrap/Extensions.kt \
 	Bootstrap/GryphonAST.kt \
+	Bootstrap/GryphonType.kt \
 	Bootstrap/KotlinTranslator.kt \
 	Bootstrap/LibraryTranspilationPass.kt \
 	Bootstrap/OutputFileMap.kt \

@@ -46,7 +46,12 @@ public class TranspilationPass {
 	}
 
 	static let swiftProtocols: ArrayClass<String> = [
-		"Equatable", "Codable", "Decodable", "Encodable", "CustomStringConvertible",
+		"Equatable",
+		"Codable",
+		"Decodable",
+		"Encodable",
+		"CustomStringConvertible",
+		"CustomDebugStringConvertible",
 	]
 
 	static func isASwiftProtocol(_ protocolName: String) -> Bool {
@@ -1471,6 +1476,9 @@ public class OmitImplicitEnumPrefixesTranspilationPass: TranspilationPass {
 	}
 }
 
+/// Renames operators from their Swift names into their Kotlin names. A particular edge case is the
+/// `__derived_enum_equals` operator, which is just equality for enums; it happens in Swift when
+/// written as `foo == bla` and shows up with this name in the AST.
 public class RenameOperatorsTranspilationPass: TranspilationPass {
 	// declaration: constructor(ast: GryphonAST): super(ast) { }
 
@@ -1485,6 +1493,7 @@ public class RenameOperatorsTranspilationPass: TranspilationPass {
             "&": "and",
             "|": "or",
             "^": "xor",
+			"__derived_enum_equals": "==",
         ]
 		if let operatorTranslation = operatorTranslations[binaryOperatorExpression.operatorSymbol] {
 			return super.replaceBinaryOperatorExpression(BinaryOperatorExpression(

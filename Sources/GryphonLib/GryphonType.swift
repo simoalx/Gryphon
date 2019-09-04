@@ -14,6 +14,8 @@
 // limitations under the License.
 //
 
+// declaration: import kotlin.system.*
+
 public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConvertible, Equatable {
 	case namedType(typeName: String)
 	case optional(subType: GryphonType)
@@ -23,11 +25,11 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 	case function(parameters: ArrayClass<GryphonType>, returnType: GryphonType)
 	case generic(typeName: String, genericArguments: ArrayClass<GryphonType>)
 
-	public var debugDescription: String {
+	public var debugDescription: String { // kotlin: ignore
 		return description
 	}
 
-	public var description: String {
+	public var description: String { // annotation: override
 		switch self {
 		case let .namedType(typeName: typeName):
 			return typeName
@@ -55,11 +57,13 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 	}
 
 	static func create(fromString string: String) -> GryphonType {
-		guard let result = Parser(string: string).parse() else {
-			fatalError("Failed to parse type: \(string)")
+		if let result = Parser(string: string).parse() {
+			return result
 		}
-
-		return result
+		else {
+			let errorMessage = "Failed to parse type: \(string)"
+			fatalError(errorMessage)
+		}
 	}
 
 	private class Parser {
@@ -460,7 +464,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 		return false
 	}
 
-	private func simplifyType(_ gryphonType: GryphonType) -> GryphonType? {
+	private func simplifyType(_ gryphonType: GryphonType) -> GryphonType? { // gryphon: pure
 		// Deal with standard library types that can be handled as other types
 		if case let .namedType(typeName: typeName) = gryphonType {
 			if let result = Utilities.getTypeMapping(for: typeName) {
@@ -478,9 +482,10 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			// Treat Slice as Array
 			if typeName == "Slice",
 				genericArguments.count == 1,
+				let genericArgument = genericArguments.first,
 				case let .generic(
 					typeName: innerTypeName,
-					genericArguments: innerGenericArguments) = genericArguments[0]
+					genericArguments: innerGenericArguments) = genericArgument
 			{
 				if innerTypeName == "ArrayClass" {
 					// ArrayClass should have exactly one generic argument, which is its element

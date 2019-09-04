@@ -23,6 +23,10 @@
 		"ast-dump": "Bootstrap/GryphonAST.swiftASTDump",
 		"kotlin": "Bootstrap/GryphonAST.kt",
 	},
+	"Sources/GryphonLib/GryphonType.swift": {
+		"ast-dump": "Bootstrap/GryphonType.swiftASTDump",
+		"kotlin": "Bootstrap/GryphonType.kt",
+	},
 	"Sources/GryphonLib/KotlinTranslator.swift": {
 		"ast-dump": "Bootstrap/KotlinTranslator.swiftASTDump",
 		"kotlin": "Bootstrap/KotlinTranslator.kt",
