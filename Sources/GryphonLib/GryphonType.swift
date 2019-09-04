@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-indirect enum GryphonType: CustomStringConvertible, Equatable {
+public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConvertible, Equatable {
 	case namedType(typeName: String)
 	case optional(subType: GryphonType)
 	case array(subType: GryphonType)
@@ -23,7 +23,11 @@ indirect enum GryphonType: CustomStringConvertible, Equatable {
 	case function(parameters: ArrayClass<GryphonType>, returnType: GryphonType)
 	case generic(typeName: String, genericArguments: ArrayClass<GryphonType>)
 
-	var description: String {
+	public var debugDescription: String {
+		return description
+	}
+
+	public var description: String {
 		switch self {
 		case let .namedType(typeName: typeName):
 			return typeName
@@ -50,8 +54,12 @@ indirect enum GryphonType: CustomStringConvertible, Equatable {
 		}
 	}
 
-	static func create(fromString string: String) -> GryphonType? {
-		return Parser(string: string).parse()
+	static func create(fromString string: String) -> GryphonType {
+		guard let result = Parser(string: string).parse() else {
+			fatalError("Failed to parse type: \(string)")
+		}
+
+		return result
 	}
 
 	private class Parser {
@@ -118,6 +126,11 @@ indirect enum GryphonType: CustomStringConvertible, Equatable {
 				return parseNonOptionalType()
 			}
 
+			if string[index...].hasPrefix("@lvalue ") {
+				index = string.index(index, offsetBy: "@lvalue ".count)
+				return parseNonOptionalType()
+			}
+
 			// Arrays, dictionarys and tuples/functions can start with brackets and parentheses, so
 			// we can detect them earlier. Generics and optionals can only be detected later since
 			// the "<...>" and "?" are postfix.
@@ -160,6 +173,12 @@ indirect enum GryphonType: CustomStringConvertible, Equatable {
 			// If it's a tuple
 			if string[index] == "(" {
 				index = string.index(after: index)
+
+				// Check if it's Void, a.k.a. `()`
+				if string[index] == ")" {
+					index = string.index(after: index)
+					return .namedType(typeName: "Void")
+				}
 
 				// Check for labels before the tuple type, i.e. `(bla: Int, foo: String)` should be
 				// parsed as `(Int, String)`
@@ -479,4 +498,105 @@ indirect enum GryphonType: CustomStringConvertible, Equatable {
 		return nil
 	}
 
+}
+
+extension GryphonType {
+	func isNamedType(_ otherTypeName: String) -> Bool {
+		switch self {
+		case let .namedType(typeName: selftypeName):
+			return selftypeName == otherTypeName
+		default:
+			return false
+		}
+	}
+
+	func getTypeName() -> String? {
+		switch self {
+		case let .namedType(typeName: typeName):
+			return typeName
+		default:
+			return nil
+		}
+	}
+
+	func getOptionalSubType() -> GryphonType? {
+		switch self {
+		case let .optional(subType: subType):
+			return subType
+		default:
+			return nil
+		}
+	}
+
+	func getArrayElementType() -> GryphonType? {
+		switch self {
+		case let .array(subType: subType):
+			return subType
+		default:
+			return nil
+		}
+	}
+
+	func getDictionaryKeyType() -> GryphonType? {
+		switch self {
+		case let .dictionary(key: key, value: _):
+			return key
+		default:
+			return nil
+		}
+	}
+
+	func getDictionaryValueType() -> GryphonType? {
+		switch self {
+		case let .dictionary(key: _, value: value):
+			return value
+		default:
+			return nil
+		}
+	}
+
+	func getTupleSubTypes() -> ArrayClass<GryphonType>? {
+		switch self {
+		case let .tuple(subTypes: subTypes):
+			return subTypes
+		default:
+			return nil
+		}
+	}
+
+	func getFunctionParameterTypes() -> ArrayClass<GryphonType>? {
+		switch self {
+		case let .function(parameters: parameters, returnType: _):
+			return parameters
+		default:
+			return nil
+		}
+	}
+
+	func getFunctionReturnType() -> GryphonType? {
+		switch self {
+		case let .function(parameters: _, returnType: returnType):
+			return returnType
+		default:
+			return nil
+		}
+	}
+
+	func getGenericTypeName() -> String? {
+		switch self {
+		case let .generic(typeName: typeName, genericArguments: _):
+			return typeName
+		default:
+			return nil
+		}
+	}
+
+	func getGenericArguments() -> ArrayClass<GryphonType>? {
+		switch self {
+		case let .generic(typeName: _, genericArguments: genericArguments):
+			return genericArguments
+		default:
+			return nil
+		}
+	}
 }
