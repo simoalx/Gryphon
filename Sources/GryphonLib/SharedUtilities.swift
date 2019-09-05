@@ -350,9 +350,9 @@ extension Utilities {
         return true
     }
 
-    static func getTypeMapping(for typeName: String) -> String? {
-        let typeMappings: DictionaryClass = [
-            "Bool": "Boolean",
+    static func getTypeMapping(for typeName: String) -> GryphonType? {
+        let typeMappings: DictionaryClass<String, String> = [
+			"Bool": "Boolean",
             "Error": "Exception",
             "UInt8": "UByte",
             "UInt16": "UShort",
@@ -378,6 +378,11 @@ extension Utilities {
             "Array<Element>.Index": "Int",
         ]
 
-        return typeMappings[typeName]
+		if let result = typeMappings[typeName] {
+			return .namedType(typeName: result)
+		}
+		else {
+			return nil
+		}
     }
 }

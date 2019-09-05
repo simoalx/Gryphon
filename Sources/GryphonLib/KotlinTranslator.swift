@@ -368,7 +368,7 @@ public class KotlinTranslator {
 		var result = "\(indentation)\(accessString) \(enumString) class " + enumDeclaration.enumName
 
 		if !enumDeclaration.inherits.isEmpty {
-			var translatedInheritedTypes = enumDeclaration.inherits.map { translateType($0) }
+			var translatedInheritedTypes = enumDeclaration.inherits.map { translateStringType($0) }
 			translatedInheritedTypes = translatedInheritedTypes.map {
 				KotlinTranslator.protocols.contains($0) ?
 					$0 :
@@ -428,7 +428,7 @@ public class KotlinTranslator {
 		else {
 			let associatedValuesString =
 				element.associatedValues
-					.map { "val \($0.label): \(translateType($0.typeName))" }
+					.map { "val \($0.label): \(translateStringType($0.typeName))" }
 					.joined(separator: ", ")
 			return result + "(\(associatedValuesString)): \(enumName)()\n"
 		}
@@ -452,7 +452,7 @@ public class KotlinTranslator {
 		withIndentation indentation: String)
 		throws -> String
 	{
-		let translatedType = translateType(typealiasDeclaration.typeName)
+		let translatedType = translateStringType(typealiasDeclaration.typeName)
 		return "\(indentation)typealias \(typealiasDeclaration.identifier) = \(translatedType)\n"
 	}
 
@@ -464,7 +464,7 @@ public class KotlinTranslator {
 		var result = "\(indentation)open class \(classDeclaration.className)"
 
 		if !classDeclaration.inherits.isEmpty {
-			let translatedInheritances = classDeclaration.inherits.map { translateType($0) }
+			let translatedInheritances = classDeclaration.inherits.map { translateStringType($0) }
 			result += ": " + translatedInheritances.joined(separator: ", ")
 		}
 
@@ -507,7 +507,8 @@ public class KotlinTranslator {
 		result += propertiesTranslation + "\n\(indentation))"
 
 		if !structDeclaration.inherits.isEmpty {
-			var translatedInheritedTypes = structDeclaration.inherits.map { translateType($0) }
+			var translatedInheritedTypes = structDeclaration.inherits
+				.map { translateStringType($0) }
 			translatedInheritedTypes = translatedInheritedTypes.map {
 				KotlinTranslator.protocols.contains($0) ?
 					$0 :
@@ -593,7 +594,7 @@ public class KotlinTranslator {
 			}
 			result += "fun "
 			if let extensionType = functionDeclaration.extendsType {
-				let translatedExtensionType = translateType(extensionType)
+				let translatedExtensionType = translateStringType(extensionType)
 				// TODO: test
 				let companionString = functionDeclaration.isStatic ? "Companion." : ""
 
@@ -635,7 +636,7 @@ public class KotlinTranslator {
 		else if functionDeclaration.returnType != "()", !isInit {
 			// If it doesn't, that place might be used for the return type
 
-			let translatedReturnType = translateType(functionDeclaration.returnType)
+			let translatedReturnType = translateStringType(functionDeclaration.returnType)
 			returnOrSuperCallString = ": \(translatedReturnType)"
 		}
 
@@ -731,7 +732,7 @@ public class KotlinTranslator {
 		withIndentation indentation: String)
 		throws -> String
 	{
-		let labelAndTypeString = parameter.label + ": " + translateType(parameter.typeName)
+		let labelAndTypeString = parameter.label + ": " + translateStringType(parameter.typeName)
 		if let defaultValue = parameter.value {
 			return try labelAndTypeString + " = "
 				+ translateExpression(defaultValue, withIndentation: indentation)
@@ -761,7 +762,7 @@ public class KotlinTranslator {
 		var result = ""
 
 		if let variableDeclaration = catchStatement.variableDeclaration {
-			let translatedType = translateType(variableDeclaration.typeName)
+			let translatedType = translateStringType(variableDeclaration.typeName)
 			result = "\(indentation)catch " +
 			"(\(variableDeclaration.identifier): \(translatedType)) {\n"
 		}
@@ -1084,7 +1085,7 @@ public class KotlinTranslator {
 
 		let extensionPrefix: String
 		if let extendsType = variableDeclaration.extendsType {
-			let translatedExtendedType = translateType(extendsType)
+			let translatedExtendedType = translateStringType(extendsType)
 
 			let genericString: String
 			if let genericIndex = translatedExtendedType.index(of: "<") {
@@ -1103,7 +1104,7 @@ public class KotlinTranslator {
 
 		result += "\(extensionPrefix)\(variableDeclaration.identifier): "
 
-		let translatedType = translateType(variableDeclaration.typeName)
+		let translatedType = translateStringType(variableDeclaration.typeName)
 		result += translatedType
 
 		if let expression = variableDeclaration.expression {
@@ -1219,7 +1220,7 @@ public class KotlinTranslator {
 			return try translateIfExpression(ifExpression, withIndentation: indentation)
 		}
 		if let typeExpression = expression as? TypeExpression {
-			return translateType(typeExpression.typeName)
+			return translateStringType(typeExpression.typeName)
 		}
 		if let subscriptExpression = expression as? SubscriptExpression {
 			return try translateSubscriptExpression(
@@ -1781,79 +1782,70 @@ public class KotlinTranslator {
 
 	// MARK: - Supporting methods
 
-	internal func translateType(_ typeName: String) -> String {
-		let typeName = typeName.replacingOccurrences(of: "()", with: "Unit")
-
-		if typeName.hasSuffix("?") {
-			return translateType(String(typeName.dropLast())) + "?"
-		}
-		else if typeName.hasPrefix("[") {
-			if typeName.contains(":") {
-				let innerType = String(typeName.dropLast().dropFirst())
-				let innerTypes = Utilities.splitTypeList(innerType)
-				let keyType = innerTypes[0]
-				let valueType = innerTypes[1]
-				let translatedKey = translateType(keyType)
-				let translatedValue = translateType(valueType)
-				return "MutableMap<\(translatedKey), \(translatedValue)>"
+	internal func translateType(_ originalType: GryphonType) -> GryphonType {
+		switch originalType {
+		case let .namedType(typeName: typeName):
+			if typeName == "()" || typeName == "Void" {
+				return .namedType(typeName: "Unit")
+			}
+		case let .optional(subType: subType):
+			return .optional(subType: translateType(subType))
+		case let .array(subType: subType):
+			return .generic(
+				typeName: "MutableList",
+				genericArguments: [translateType(subType)])
+		case let .dictionary(key: key, value: value):
+			return .generic(
+				typeName: "MutableMap",
+				genericArguments: [
+					translateType(key),
+					translateType(value), ])
+		case let .generic(typeName: typeName, genericArguments: genericArguments):
+			if typeName == "ArrayClass" {
+				return .generic(
+					typeName: "MutableList",
+					genericArguments: genericArguments.map { translateType($0) })
+			}
+			if typeName == "DictionaryClass" {
+				return .generic(
+					typeName: "MutableMap",
+					genericArguments: genericArguments.map { translateType($0) })
+			}
+		case let .tuple(subTypes: subTypes):
+			if subTypes.count == 2 {
+				return .generic(
+					typeName: "Pair",
+					genericArguments: [
+						translateType(subTypes[0]),
+						translateType(subTypes[1]), ])
 			}
 			else {
-				let innerType = String(typeName.dropLast().dropFirst())
-				let translatedInnerType = translateType(innerType)
-				return "MutableList<\(translatedInnerType)>"
+				return .tuple(subTypes: subTypes.map { translateType($0) })
 			}
+		case let .function(parameters: parameters, returnType: returnType):
+			return .function(
+				parameters: parameters.map { translateType($0) },
+				returnType: translateType(returnType))
+		default:
+			break
 		}
-		else if typeName.hasPrefix("ArrayClass<") {
-			let innerType = String(typeName.dropLast().dropFirst("ArrayClass<".count))
-			let translatedInnerType = translateType(innerType)
-			return "MutableList<\(translatedInnerType)>"
-		}
-		else if typeName.hasPrefix("DictionaryClass<") {
-			let innerTypes = String(typeName.dropLast().dropFirst("DictionaryClass<".count))
-			let keyValue = Utilities.splitTypeList(innerTypes)
-			let key = keyValue[0]
-			let value = keyValue[1]
-			let translatedKey = translateType(key)
-			let translatedValue = translateType(value)
-			return "MutableMap<\(translatedKey), \(translatedValue)>"
-		}
-		else if Utilities.isInEnvelopingParentheses(typeName) {
-			let innerTypeString = String(typeName.dropFirst().dropLast())
-			let innerTypes = Utilities.splitTypeList(innerTypeString, separators: [", "])
-			if innerTypes.count == 2 {
-				return "Pair<\(innerTypes.joined(separator: ", "))>"
-			}
-			else {
-				return translateType(String(typeName.dropFirst().dropLast()))
-			}
-		}
-		else if typeName.contains(" -> ") {
-			let functionComponents = Utilities.splitTypeList(typeName, separators: [" -> "])
-			let translatedComponents = functionComponents.map {
-				translateFunctionTypeComponent($0)
-			}
 
-			let firstTypes = ArrayClass<String>(translatedComponents.dropLast().map { "(\($0))" })
-			let lastType = translatedComponents.last!
+		return Utilities.getTypeMapping(for: originalType.description) ?? originalType
+	}
 
-			let allTypes = firstTypes
-			allTypes.append(lastType)
-			return allTypes.joined(separator: " -> ")
-		}
-		else {
-			return Utilities.getTypeMapping(for: typeName) ?? typeName
-		}
+	internal func translateStringType(_ typeName: String) -> String {
+		return translateType(GryphonType.create(fromString: typeName)).description
 	}
 
 	private func translateFunctionTypeComponent(_ component: String) -> String {
 		if Utilities.isInEnvelopingParentheses(component) {
 			let openComponent = String(component.dropFirst().dropLast())
 			let componentParts = Utilities.splitTypeList(openComponent, separators: [", "])
-			let translatedParts = componentParts.map { translateType($0) }
+			let translatedParts = componentParts.map { translateStringType($0) }
 			return translatedParts.joined(separator: ", ")
 		}
 		else {
-			return translateType(component)
+			return translateStringType(component)
 		}
 	}
 

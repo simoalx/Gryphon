@@ -1749,8 +1749,9 @@ public class CovarianceInitsAsCallsTranspilationPass: TranspilationPass {
 			{
 				let arrayClassElementType =
 					String(typeExpression.typeName.dropFirst("ArrayClass<".count).dropLast())
-				let mappedElementType = Utilities.getTypeMapping(for: arrayClassElementType) ??
-					arrayClassElementType
+				let mappedElementType =
+					Utilities.getTypeMapping(for: arrayClassElementType)?.description ??
+						arrayClassElementType
 
 				if onlyPair.label == "array" {
 					// If we're initializing with an Array of a different type, we might need to call

@@ -485,7 +485,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 	private func simplifyType(_ gryphonType: GryphonType) -> GryphonType? { // gryphon: pure
 		// Deal with standard library types that can be handled as other types
 		if case let .namedType(typeName: typeName) = gryphonType {
-			if let result = Utilities.getTypeMapping(for: typeName) {
+			if let result = Utilities.getTypeMapping(for: typeName)?.description {
 				return .namedType(typeName: result)
 			}
 		}
