@@ -2241,15 +2241,23 @@ public class SwiftTranslator {
 				ast: typeExpressionFixme, translator: self)
 		}
 
-		guard let typeName = typeExpressionFixme["typerepr"] else {
+		guard let typeName = typeExpressionFixme["type"] else {
 			return try unexpectedExpressionStructureError(
 				"Unrecognized structure",
 				ast: typeExpressionFixme, translator: self)
 		}
 
+		let cleanType: String
+		if typeName.hasSuffix(".Type") {
+			cleanType = cleanUpType(String(typeName.dropLast(".Type".count)))
+		}
+		else {
+			cleanType = cleanUpType(typeName)
+		}
+
 		return TypeExpression(
 			range: getRangeRecursively(ofNode: typeExpressionFixme),
-			typeName: cleanUpType(typeName))
+			typeName: cleanType)
 	}
 
 	// FIXME: rename this parameter
@@ -3172,19 +3180,7 @@ public class SwiftTranslator {
 	}
 
 	internal func cleanUpType(_ typeName: String) -> String {
-		if typeName.hasPrefix("@lvalue ") {
-			return String(typeName.suffix(from: "@lvalue ".endIndex))
-		}
-		else if typeName.hasPrefix("("),
-			typeName.hasSuffix(")"),
-			!typeName.contains("->"),
-			!typeName.contains(",")
-		{
-			return String(typeName.dropFirst().dropLast())
-		}
-		else {
-			return typeName
-		}
+		return GryphonType.create(fromString: typeName).description
 	}
 
 	internal func astIsExpression(_ ast: SwiftAST) -> Bool {

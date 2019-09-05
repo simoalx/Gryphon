@@ -2370,7 +2370,7 @@ public class RecordFunctionsTranspilationPass: TranspilationPass {
 
 		KotlinTranslator.addFunctionTranslation(KotlinTranslator.FunctionTranslation(
 			swiftAPIName: swiftAPIName,
-			typeName: functionDeclaration.functionType,
+			functionType: GryphonType.create(fromString: functionDeclaration.functionType),
 			prefix: functionDeclaration.prefix,
 			parameters: functionDeclaration.parameters.map { $0.label }))
 

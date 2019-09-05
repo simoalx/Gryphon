@@ -24,6 +24,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 	case tuple(subTypes: ArrayClass<GryphonType>)
 	case function(parameters: ArrayClass<GryphonType>, returnType: GryphonType)
 	case generic(typeName: String, genericArguments: ArrayClass<GryphonType>)
+	case dottedType(leftType: GryphonType, rightType: GryphonType)
 
 	public var debugDescription: String { // kotlin: ignore
 		return description
@@ -53,6 +54,8 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 		case let .generic(typeName: typeName, genericArguments: genericArguments):
 			let genericStrings = genericArguments.map { $0.description }.joined(separator: ", ")
 			return "\(typeName)<\(genericStrings)>"
+		case let .dottedType(leftType: leftType, rightType: rightType):
+			return "\(leftType).\(rightType)"
 		}
 	}
 
@@ -100,41 +103,66 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 		/// Parses the next type, starting at `index`. Leaves `index` in the position after the end
 		/// of the parsed type if successful; returns `nil` otherwise.
 		private func parseType() -> GryphonType? {
-			guard let nonOptionalType = parseNonOptionalType() else {
+			guard let halfType = parseTypeAndPrefixes() else {
 				return nil
 			}
 
-			var result = nonOptionalType
+			var result = halfType
 
+			// Check for suffixes of the type
+
+			// Check for "?"s
 			cleanLeadingWhitespace()
-
-			// Check for "?"s after the type
 			while index != string.endIndex, string[index] == "?" {
 				index = string.index(after: index)
 				result = .optional(subType: result)
+			}
+
+			// Check for variadic types (i.e. the `Int...` in `(Int...) -> ()`)
+			cleanLeadingWhitespace()
+			if index != string.endIndex, string[index...].hasPrefix("...") {
+				index = string.index(index, offsetBy: "...".count)
+				result = .array(subType: result)
+			}
+
+			// Check for dotted types (i.e. `String.Index`)
+			cleanLeadingWhitespace()
+			if index != string.endIndex, string[index] == "." {
+				index = string.index(after: index)
+
+				guard let rightType = parseType() else {
+					return nil
+				}
+
+				result = .dottedType(leftType: result, rightType: rightType)
 			}
 
 			return result
 		}
 
 		/// Parses a type ignoring possible "?"s at its end
-		private func parseNonOptionalType() -> GryphonType? {
+		private func parseTypeAndPrefixes() -> GryphonType? {
 			cleanLeadingWhitespace()
 
 			// Two special cases: types with `inout` and `__owned` prefixes
 			if string[index...].hasPrefix("inout ") {
 				index = string.index(index, offsetBy: "inout ".count)
-				return parseNonOptionalType()
+				return parseTypeAndPrefixes()
 			}
 
 			if string[index...].hasPrefix("__owned ") {
 				index = string.index(index, offsetBy: "__owned ".count)
-				return parseNonOptionalType()
+				return parseTypeAndPrefixes()
 			}
 
 			if string[index...].hasPrefix("@lvalue ") {
 				index = string.index(index, offsetBy: "@lvalue ".count)
-				return parseNonOptionalType()
+				return parseTypeAndPrefixes()
+			}
+
+			if string[index...].hasPrefix("@autoclosure ") {
+				index = string.index(index, offsetBy: "@autoclosure ".count)
+				return parseTypeAndPrefixes()
 			}
 
 			// Arrays, dictionarys and tuples/functions can start with brackets and parentheses, so
@@ -256,8 +284,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			while normalTypeEndIndex != string.endIndex,
 				(string[normalTypeEndIndex].isLetter ||
 					string[normalTypeEndIndex].isNumber ||
-					string[normalTypeEndIndex] == "_" ||
-					string[normalTypeEndIndex] == ".")
+					string[normalTypeEndIndex] == "_")
 			{
 				normalTypeEndIndex = string.index(after: normalTypeEndIndex)
 			}

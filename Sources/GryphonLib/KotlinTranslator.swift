@@ -59,7 +59,7 @@ public class KotlinTranslator {
 	/// the internal parameter names, only the API names.
 	public struct FunctionTranslation {
 		let swiftAPIName: String
-		let typeName: String
+		let functionType: GryphonType
 		let prefix: String
 		let parameters: ArrayClass<String>
 	}
@@ -70,14 +70,14 @@ public class KotlinTranslator {
 		functionTranslations.append(newValue)
 	}
 
-	public static func getFunctionTranslation(forName name: String, typeName: String)
+	public static func getFunctionTranslation(forName name: String, functionType: GryphonType)
 		-> FunctionTranslation?
 	{
 		// Functions with unnamed parameters here are identified only by their prefix. For instance
 		// `f(_:_:)` here is named `f` but has been stored earlier as `f(_:_:)`.
 		for functionTranslation in functionTranslations {
 			if functionTranslation.swiftAPIName.hasPrefix(name),
-				functionTranslation.typeName == typeName
+				functionTranslation.functionType == functionType
 			{
 				return functionTranslation
 			}
@@ -1438,7 +1438,7 @@ public class KotlinTranslator {
 		if let expression = functionExpression as? DeclarationReferenceExpression {
 			functionTranslation = KotlinTranslator.getFunctionTranslation(
 				forName: expression.identifier,
-				typeName: expression.typeName)
+				functionType: GryphonType.create(fromString: expression.typeName))
 		}
 		else {
 			functionTranslation = nil
