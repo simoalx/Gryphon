@@ -111,7 +111,8 @@ public class KotlinTranslator {
 		if let declarationExpression = finalCallExpression as? DeclarationReferenceExpression {
 			for functionDeclaration in pureFunctions {
 				if declarationExpression.identifier.hasPrefix(functionDeclaration.prefix),
-					declarationExpression.typeName == functionDeclaration.functionType
+					declarationExpression.expressionType.description ==
+						functionDeclaration.functionType
 				{
 					return true
 				}
@@ -1439,7 +1440,7 @@ public class KotlinTranslator {
 		if let expression = functionExpression as? DeclarationReferenceExpression {
 			functionTranslation = KotlinTranslator.getFunctionTranslation(
 				forName: expression.identifier,
-				functionType: GryphonType.create(fromString: expression.typeName))
+				functionType: expression.expressionType)
 		}
 		else {
 			functionTranslation = nil
@@ -1792,29 +1793,31 @@ public class KotlinTranslator {
 			return .optional(subType: translateType(subType))
 		case let .array(subType: subType):
 			return .generic(
-				typeName: "MutableList",
+				baseType: .namedType(typeName: "MutableList"),
 				genericArguments: [translateType(subType)])
 		case let .dictionary(key: key, value: value):
 			return .generic(
-				typeName: "MutableMap",
+				baseType: .namedType(typeName: "MutableMap"),
 				genericArguments: [
 					translateType(key),
 					translateType(value), ])
-		case let .generic(typeName: typeName, genericArguments: genericArguments):
-			if typeName == "ArrayClass" {
-				return .generic(
-					typeName: "MutableList",
-					genericArguments: genericArguments.map { translateType($0) })
-			}
-			if typeName == "DictionaryClass" {
-				return .generic(
-					typeName: "MutableMap",
-					genericArguments: genericArguments.map { translateType($0) })
+		case let .generic(baseType: baseType, genericArguments: genericArguments):
+			if case let .namedType(typeName: typeName) = baseType {
+				if typeName == "ArrayClass" {
+					return .generic(
+						baseType: .namedType(typeName: "MutableList"),
+						genericArguments: genericArguments.map { translateType($0) })
+				}
+				if typeName == "DictionaryClass" {
+					return .generic(
+						baseType: .namedType(typeName: "MutableMap"),
+						genericArguments: genericArguments.map { translateType($0) })
+				}
 			}
 		case let .tuple(subTypes: subTypes):
 			if subTypes.count == 2 {
 				return .generic(
-					typeName: "Pair",
+					baseType: .namedType(typeName: "Pair"),
 					genericArguments: [
 						translateType(subTypes[0]),
 						translateType(subTypes[1]), ])

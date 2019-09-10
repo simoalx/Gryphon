@@ -135,7 +135,7 @@ extension Expression {
 
 		if let declarationExpression = rhs as? DeclarationReferenceExpression {
 			if declarationExpression.identifier.hasPrefix("_"),
-				lhs.isOfType(declarationExpression.typeName)
+				lhs.isOfType(declarationExpression.expressionType.description)
 			{
 				matches[declarationExpression.identifier] = lhs
 				return true
@@ -159,8 +159,7 @@ extension Expression {
 			let rhs = rhs as? DeclarationReferenceExpression
 		{
 			return lhs.identifier == rhs.identifier &&
-				GryphonType.create(fromString: lhs.typeName)
-					.isSubtype(of: GryphonType.create(fromString: rhs.typeName)) &&
+				lhs.expressionType.isSubtype(of: rhs.expressionType) &&
 				lhs.isImplicit == rhs.isImplicit
 		}
 		if let lhs = lhs as? OptionalExpression,
@@ -180,7 +179,7 @@ extension Expression {
 			guard declarationExpressionMatchesImplicitTypeExpression(rhs) else {
 				return false
 			}
-			let expressionType = String(rhs.typeName.dropLast(".Type".count))
+			let expressionType = String(rhs.expressionType.description.dropLast(".Type".count))
 			return GryphonType.create(fromString: lhs.typeName)
 				.isSubtype(of: GryphonType.create(fromString: expressionType))
 		}
@@ -190,7 +189,7 @@ extension Expression {
 			guard declarationExpressionMatchesImplicitTypeExpression(lhs) else {
 				return false
 			}
-			let expressionType = String(lhs.typeName.dropLast(".Type".count))
+			let expressionType = String(lhs.expressionType.description.dropLast(".Type".count))
 			return GryphonType.create(fromString: expressionType)
 				.isSubtype(of: GryphonType.create(fromString: rhs.typeName))
 		}
@@ -374,7 +373,7 @@ extension Expression {
 		_ expression: DeclarationReferenceExpression) -> Bool
 	{
 		if expression.identifier == "self",
-			expression.typeName.hasSuffix(".Type"),
+			expression.expressionType.description.hasSuffix(".Type"),
 			expression.isImplicit
 		{
 			return true

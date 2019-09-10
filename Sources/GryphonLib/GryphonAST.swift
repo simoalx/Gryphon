@@ -1360,19 +1360,19 @@ public class OptionalExpression: Expression {
 
 public class DeclarationReferenceExpression: Expression {
 	var identifier: String
-	var typeName: String
+	var expressionType: GryphonType
 	var isStandardLibrary: Bool
 	var isImplicit: Bool
 
 	init(
 		range: SourceFileRange?,
 		identifier: String,
-		typeName: String,
+		expressionType: GryphonType,
 		isStandardLibrary: Bool,
 		isImplicit: Bool)
 	{
 		self.identifier = identifier
-		self.typeName = typeName
+		self.expressionType = expressionType
 		self.isStandardLibrary = isStandardLibrary
 		self.isImplicit = isImplicit
 		super.init(range: range, name: "DeclarationReferenceExpression".capitalizedAsCamelCase())
@@ -1380,14 +1380,14 @@ public class DeclarationReferenceExpression: Expression {
 
 	override public var printableSubtrees: ArrayClass<PrintableAsTree?> { // annotation: override
 		return [
-			PrintableTree(typeName),
+			PrintableTree(expressionType.description),
 			PrintableTree(identifier),
 			isStandardLibrary ? PrintableTree("isStandardLibrary") : nil,
 			isImplicit ? PrintableTree("implicit") : nil, ]
 	}
 
 	override var swiftType: String? { // annotation: override
-		return typeName
+		return expressionType.description
 	}
 
 	public static func == (
@@ -1396,7 +1396,7 @@ public class DeclarationReferenceExpression: Expression {
 		-> Bool
 	{
 		return lhs.identifier == rhs.identifier &&
-			lhs.typeName == rhs.typeName &&
+			lhs.expressionType == rhs.expressionType &&
 			lhs.isStandardLibrary == rhs.isStandardLibrary &&
 			lhs.isImplicit == rhs.isImplicit
 	}
@@ -1571,9 +1571,10 @@ public class DotExpression: Expression {
 		{
 			let enumType = leftType.typeName
 
-			if rightDeclarationReference.typeName.hasPrefix("("),
-				rightDeclarationReference.typeName.contains("\(enumType).Type) -> "),
-				rightDeclarationReference.typeName.hasSuffix(enumType)
+			let rightExpressionType = rightDeclarationReference.expressionType.description
+			if rightExpressionType.hasPrefix("("),
+				rightExpressionType.contains("\(enumType).Type) -> "),
+				rightExpressionType.hasSuffix(enumType)
 			{
 				return enumType
 			}

@@ -1428,7 +1428,7 @@ public class OmitImplicitEnumPrefixesTranspilationPass: TranspilationPass {
 		if let enumTypeExpression = dotExpression.leftExpression as? TypeExpression,
 			let enumExpression = dotExpression.rightExpression as? DeclarationReferenceExpression
 		{
-			if enumExpression.typeName ==
+			if enumExpression.expressionType.description ==
 					"(\(enumTypeExpression.typeName).Type) -> \(enumTypeExpression.typeName)",
 				!KotlinTranslator.sealedClasses.contains(enumTypeExpression.typeName)
 			{
@@ -1769,7 +1769,8 @@ public class CovarianceInitsAsCallsTranspilationPass: TranspilationPass {
 									function: DeclarationReferenceExpression(
 										range: callExpression.range,
 										identifier: "toMutableList<\(mappedElementType)>",
-										typeName: typeExpression.typeName,
+										expressionType:
+											GryphonType.create(fromString: typeExpression.typeName),
 										isStandardLibrary: false,
 										isImplicit: false),
 									parameters: TupleExpression(
@@ -1790,7 +1791,8 @@ public class CovarianceInitsAsCallsTranspilationPass: TranspilationPass {
 							function: DeclarationReferenceExpression(
 								range: callExpression.range,
 								identifier: "toMutableList<\(mappedElementType)>",
-								typeName: typeExpression.typeName,
+								expressionType:
+									GryphonType.create(fromString: typeExpression.typeName),
 								isStandardLibrary: false,
 								isImplicit: false),
 							parameters: TupleExpression(
@@ -1885,7 +1887,8 @@ public class RefactorOptionalsInSubscriptsTranspilationPass: TranspilationPass {
 					function: DeclarationReferenceExpression(
 						range: subscriptExpression.subscriptedExpression.range,
 						identifier: "get",
-						typeName: "(\(indexExpressionType)) -> \(subscriptExpression.typeName)",
+						expressionType: GryphonType.create(fromString:
+							"(\(indexExpressionType)) -> \(subscriptExpression.typeName)"),
 						isStandardLibrary: false,
 						isImplicit: false),
 					parameters: TupleExpression(
@@ -2188,7 +2191,7 @@ public class IsOperatorsInSealedClassesTranspilationPass: TranspilationPass {
 			switchStatement.expression as? DeclarationReferenceExpression
 		{
 			if KotlinTranslator.sealedClasses.contains(
-				declarationReferenceExpression.typeName)
+				declarationReferenceExpression.expressionType.description)
 			{
 				let newCases = switchStatement.cases.map {
 					replaceIsOperatorsInSwitchCase($0, usingExpression: switchStatement.expression)
@@ -2549,9 +2552,11 @@ public class RaiseNativeDataStructureWarningsTranspilationPass: TranspilationPas
 				let declarationReference =
 				callExpression.function as? DeclarationReferenceExpression
 			{
+				let declarationType = declarationReference.expressionType.description
+
 				if declarationReference.identifier.hasPrefix("toMutable"),
-					(declarationReference.typeName.hasPrefix("ArrayClass") ||
-						declarationReference.typeName.hasPrefix("DictionaryClass"))
+					(declarationType.hasPrefix("ArrayClass") ||
+						declarationType.hasPrefix("DictionaryClass"))
 				{
 					return dotExpression
 				}
@@ -2739,7 +2744,7 @@ public class RearrangeIfLetsTranspilationPass: TranspilationPass {
 				leftExpression: DeclarationReferenceExpression(
 					range: variableDeclaration.expression?.range,
 					identifier: variableDeclaration.identifier,
-					typeName: variableDeclaration.typeName,
+					expressionType: GryphonType.create(fromString: variableDeclaration.typeName),
 					isStandardLibrary: false,
 					isImplicit: false),
 				rightExpression: NilLiteralExpression(
@@ -2835,7 +2840,7 @@ public class EquatableOperatorsTranspilationPass: TranspilationPass {
 			expression: DeclarationReferenceExpression(
 				range: range,
 				identifier: "this",
-				typeName: lhs.typeName,
+				expressionType: GryphonType.create(fromString: lhs.typeName),
 				isStandardLibrary: false,
 				isImplicit: false),
 			getter: nil,
@@ -2852,7 +2857,7 @@ public class EquatableOperatorsTranspilationPass: TranspilationPass {
 			expression: DeclarationReferenceExpression(
 				range: range,
 				identifier: "other",
-				typeName: "Any?",
+				expressionType: .optional(subType: .namedType(typeName: "Any")),
 				isStandardLibrary: false,
 				isImplicit: false),
 			getter: nil,
@@ -2871,7 +2876,7 @@ public class EquatableOperatorsTranspilationPass: TranspilationPass {
 				leftExpression: DeclarationReferenceExpression(
 					range: range,
 					identifier: rhs.label,
-					typeName: "Any?",
+					expressionType: .optional(subType: .namedType(typeName: "Any")),
 					isStandardLibrary: false,
 					isImplicit: false),
 				rightExpression: TypeExpression(range: range, typeName: rhs.typeName),
@@ -2984,7 +2989,8 @@ public class RawValuesTranspilationPass: TranspilationPass {
 							rightExpression: DeclarationReferenceExpression(
 								range: range,
 								identifier: element.name,
-								typeName: enumDeclaration.enumName,
+								expressionType:
+									GryphonType.create(fromString: enumDeclaration.enumName),
 								isStandardLibrary: false,
 								isImplicit: false))),
 				])
@@ -3004,7 +3010,7 @@ public class RawValuesTranspilationPass: TranspilationPass {
 			expression: DeclarationReferenceExpression(
 				range: range,
 				identifier: "rawValue",
-				typeName: rawValueType,
+				expressionType: GryphonType.create(fromString: rawValueType),
 				isStandardLibrary: false,
 				isImplicit: false),
 			cases: switchCases)
@@ -3047,7 +3053,7 @@ public class RawValuesTranspilationPass: TranspilationPass {
 					rightExpression: DeclarationReferenceExpression(
 						range: range,
 						identifier: element.name,
-						typeName: enumDeclaration.enumName,
+						expressionType: GryphonType.create(fromString: enumDeclaration.enumName),
 						isStandardLibrary: false,
 						isImplicit: false)), ],
 				statements: [
@@ -3063,7 +3069,7 @@ public class RawValuesTranspilationPass: TranspilationPass {
 			expression: DeclarationReferenceExpression(
 				range: range,
 				identifier: "this",
-				typeName: enumDeclaration.enumName,
+				expressionType: GryphonType.create(fromString: enumDeclaration.enumName),
 				isStandardLibrary: false,
 				isImplicit: false),
 			cases: switchCases)
@@ -3201,7 +3207,7 @@ public class ReturnIfNilTranspilationPass: TranspilationPass {
 										range: ifStatement.range,
 										expression: returnStatement.expression),
 									operatorSymbol: "?:",
-									typeName: declarationExpression.typeName)), ]
+									typeName: declarationExpression.expressionType.description)), ]
 						}
 					}
 				}

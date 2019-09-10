@@ -652,7 +652,7 @@ public class SwiftTranslator {
 			let rightHand = DeclarationReferenceExpression(
 				range: range,
 				identifier: declarationInformation.identifier,
-				typeName: typeName,
+				expressionType: GryphonType.create(fromString: typeName),
 				isStandardLibrary: declarationInformation.isStandardLibrary,
 				isImplicit: isImplicit)
 			return DotExpression(
@@ -708,7 +708,7 @@ public class SwiftTranslator {
 						rightExpression: DeclarationReferenceExpression(
 							range: range,
 							identifier: label,
-							typeName: typeName,
+							expressionType: GryphonType.create(fromString: typeName),
 							isStandardLibrary: leftExpression.isStandardLibrary,
 							isImplicit: false))
 				}
@@ -721,7 +721,7 @@ public class SwiftTranslator {
 						rightExpression: DeclarationReferenceExpression(
 							range: range,
 							identifier: memberName,
-							typeName: tupleComponent,
+							expressionType: GryphonType.create(fromString: tupleComponent),
 							isStandardLibrary: leftExpression.isStandardLibrary,
 							isImplicit: false))
 				}
@@ -1040,7 +1040,7 @@ public class SwiftTranslator {
 			variable = DeclarationReferenceExpression(
 				range: variableRange,
 				identifier: variableName,
-				typeName: cleanUpType(rawTypeNamed),
+				expressionType: GryphonType.create(fromString: cleanUpType(rawTypeNamed)),
 				isStandardLibrary: false,
 				isImplicit: false)
 			collectionExpression = maybeCollectionExpression
@@ -1057,7 +1057,7 @@ public class SwiftTranslator {
 						expression: DeclarationReferenceExpression(
 							range: variableRange,
 							identifier: name,
-							typeName: cleanUpType(typeName),
+							expressionType: GryphonType.create(fromString: cleanUpType(typeName)),
 							isStandardLibrary: false,
 							isImplicit: false))
 				}
@@ -1074,7 +1074,7 @@ public class SwiftTranslator {
 			variable = DeclarationReferenceExpression(
 				range: variableRange,
 				identifier: "_0",
-				typeName: typeName,
+				expressionType: GryphonType.create(fromString: typeName),
 				isStandardLibrary: false,
 				isImplicit: false)
 			collectionExpression = maybeCollectionExpression
@@ -1288,7 +1288,8 @@ public class SwiftTranslator {
 								rightExpression: DeclarationReferenceExpression(
 									range: range,
 									identifier: $0.associatedValueName,
-									typeName: $0.associatedValueType,
+									expressionType:
+										GryphonType.create(fromString: $0.associatedValueType),
 									isStandardLibrary: false,
 									isImplicit: false)),
 							getter: nil,
@@ -1366,7 +1367,7 @@ public class SwiftTranslator {
 		let lastExpression = DeclarationReferenceExpression(
 			range: range,
 			identifier: String(lastEnumElement),
-			typeName: typeName,
+			expressionType: GryphonType.create(fromString: typeName),
 			isStandardLibrary: false,
 			isImplicit: false)
 
@@ -1515,7 +1516,8 @@ public class SwiftTranslator {
 							rightExpression: DeclarationReferenceExpression(
 								range: range,
 								identifier: comparison.associatedValueName,
-								typeName: comparison.associatedValueType,
+								expressionType:
+									GryphonType.create(fromString: comparison.associatedValueType),
 								isStandardLibrary: false,
 								isImplicit: false)),
 						rightExpression: comparison.comparedExpression,
@@ -1536,7 +1538,8 @@ public class SwiftTranslator {
 							rightExpression: DeclarationReferenceExpression(
 								range: range,
 								identifier: String(declaration.associatedValueName),
-								typeName: declaration.associatedValueType,
+								expressionType:
+									GryphonType.create(fromString: declaration.associatedValueType),
 								isStandardLibrary: false,
 								isImplicit: false)),
 						getter: nil,
@@ -2172,7 +2175,7 @@ public class SwiftTranslator {
 				result = DeclarationReferenceExpression(
 					range: getRange(ofNode: expression),
 					identifier: "super",
-					typeName: typeName,
+					expressionType: GryphonType.create(fromString: typeName),
 					isStandardLibrary: false,
 					isImplicit: false)
 			}
@@ -2214,7 +2217,7 @@ public class SwiftTranslator {
 			result = DeclarationReferenceExpression(
 				range: getRangeRecursively(ofNode: expression),
 				identifier: "init",
-				typeName: expression["type"]!,
+				expressionType: GryphonType.create(fromString: expression["type"]!),
 				isStandardLibrary: false,
 				isImplicit: false)
 
@@ -2882,7 +2885,7 @@ public class SwiftTranslator {
 			return DeclarationReferenceExpression(
 					range: range,
 					identifier: declarationInformation.identifier,
-					typeName: typeName,
+					expressionType: GryphonType.create(fromString: typeName),
 					isStandardLibrary: declarationInformation.isStandardLibrary,
 					isImplicit: isImplicit)
 		}
@@ -2893,7 +2896,7 @@ public class SwiftTranslator {
 			return DeclarationReferenceExpression(
 				range: range,
 				identifier: declarationInformation.identifier,
-				typeName: typeName,
+				expressionType: GryphonType.create(fromString: typeName),
 				isStandardLibrary: declarationInformation.isStandardLibrary,
 				isImplicit: isImplicit)
 		}
@@ -2902,7 +2905,7 @@ public class SwiftTranslator {
 			return DeclarationReferenceExpression(
 				range: range,
 				identifier: declarationInformation.identifier,
-				typeName: typeName,
+				expressionType: GryphonType.create(fromString: typeName),
 				isStandardLibrary: declarationInformation.isStandardLibrary,
 				isImplicit: isImplicit)
 		}

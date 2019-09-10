@@ -23,7 +23,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 	case dictionary(key: GryphonType, value: GryphonType)
 	case tuple(subTypes: ArrayClass<GryphonType>)
 	case function(parameters: ArrayClass<GryphonType>, returnType: GryphonType)
-	case generic(typeName: String, genericArguments: ArrayClass<GryphonType>)
+	case generic(baseType: GryphonType, genericArguments: ArrayClass<GryphonType>)
 	case dottedType(leftType: GryphonType, rightType: GryphonType)
 
 	public var debugDescription: String { // kotlin: ignore
@@ -51,9 +51,9 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 		case let .function(parameters: parameters, returnType: returnType):
 			let parameterStrings = parameters.map { $0.description }.joined(separator: ", ")
 			return "(\(parameterStrings)) -> \(returnType)"
-		case let .generic(typeName: typeName, genericArguments: genericArguments):
+		case let .generic(baseType: baseType, genericArguments: genericArguments):
 			let genericStrings = genericArguments.map { $0.description }.joined(separator: ", ")
-			return "\(typeName)<\(genericStrings)>"
+			return "\(baseType)<\(genericStrings)>"
 		case let .dottedType(leftType: leftType, rightType: rightType):
 			return "\(leftType).\(rightType)"
 		}
@@ -78,6 +78,8 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			self.index = string.startIndex
 		}
 
+		// TODO: add tests for double functions (i.e. `() -> () -> ()`)
+		// Add tests for annotations (@autoclosure, etc)
 		func parse() -> GryphonType? {
 			guard !string.isEmpty else {
 				return nil
@@ -140,34 +142,39 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			return result
 		}
 
-		/// Parses a type ignoring possible "?"s at its end
+		/// Parses a type ignoring possible suffixes
 		private func parseTypeAndPrefixes() -> GryphonType? {
 			cleanLeadingWhitespace()
 
-			// Two special cases: types with `inout` and `__owned` prefixes
+			// Special cases:
+			// - types with `inout`;
+			// - types with `_` annotations (i.e. `__owned`);
+			// - types with `@` attributes (i.e. `@autoclosure`, `@escaping`, `@lvalue`)
 			if string[index...].hasPrefix("inout ") {
 				index = string.index(index, offsetBy: "inout ".count)
 				return parseTypeAndPrefixes()
 			}
 
-			if string[index...].hasPrefix("__owned ") {
-				index = string.index(index, offsetBy: "__owned ".count)
+			if string[index] == "_" {
+				while string[index] != " " {
+					index = string.index(after: index)
+				}
 				return parseTypeAndPrefixes()
 			}
 
-			if string[index...].hasPrefix("@lvalue ") {
-				index = string.index(index, offsetBy: "@lvalue ".count)
-				return parseTypeAndPrefixes()
-			}
-
-			if string[index...].hasPrefix("@autoclosure ") {
-				index = string.index(index, offsetBy: "@autoclosure ".count)
+			if string[index] == "@" {
+				while string[index] != " " {
+					index = string.index(after: index)
+				}
 				return parseTypeAndPrefixes()
 			}
 
 			// Arrays, dictionarys and tuples/functions can start with brackets and parentheses, so
 			// we can detect them earlier. Generics and optionals can only be detected later since
 			// the "<...>" and "?" are postfix.
+
+			// Check for leading generics (for instance in a generic function)
+			let leadingGenericTypes = parseGenerics()
 
 			// If it's an array or a dictionary
 			if string[index] == "[" {
@@ -205,46 +212,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			}
 
 			// If it's a tuple
-			if string[index] == "(" {
-				index = string.index(after: index)
-
-				// Check for labels before the tuple type, i.e. `(bla: Int, foo: String)` should be
-				// parsed as `(Int, String)`
-
-				let tupleElements: ArrayClass<GryphonType> = []
-
-				while string[index] != ")" {
-					// Skip the comma if necessary
-					if string[index] == "," {
-						index = string.index(after: index)
-					}
-
-					// Check for labels just as before
-					let newSubType: GryphonType
-					guard let firstAttempt = parseType() else {
-						return nil
-					}
-					if string[index] == ":" {
-						index = string.index(after: index)
-						cleanLeadingWhitespace()
-						guard let secondAttempt = parseType() else {
-							return nil
-						}
-						newSubType = secondAttempt
-					}
-					else {
-						newSubType = firstAttempt
-					}
-
-					tupleElements.append(newSubType)
-				}
-
-				guard string[index] == ")" else {
-					return nil
-				}
-				index = string.index(after: index)
-				cleanLeadingWhitespace()
-
+			if let tupleElements = parseTuple() {
 				// Check if it's a standard tuple or if it's part of a function type.
 				// Function types will have the "->" arrow after the tuple, possibly with a "throws"
 				// annotation before the arrow (i.e. in `(String) throws -> ()`).
@@ -262,7 +230,14 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 						return nil
 					}
 
-					return .function(parameters: tupleElements, returnType: returnType)
+					if let leadingGenericTypes = leadingGenericTypes {
+						return .generic(
+							baseType: .function(parameters: tupleElements, returnType: returnType),
+							genericArguments: leadingGenericTypes)
+					}
+					else {
+						return .function(parameters: tupleElements, returnType: returnType)
+					}
 				}
 				else {
 					// If it's not a function, it either can be `Void` (a.k.a. `()`), or a simple
@@ -299,31 +274,7 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			cleanLeadingWhitespace()
 
 			// Check if it's a generic
-			if index != string.endIndex, string[index] == "<" {
-				// If it's a generic type
-
-				index = string.index(after: index)
-
-				guard let subType1 = parseType() else {
-					return nil
-				}
-
-				let genericElements: ArrayClass<GryphonType> = [subType1]
-
-				while string[index] == "," {
-					index = string.index(after: index)
-
-					guard let newSubType = parseType() else {
-						return nil
-					}
-
-					genericElements.append(newSubType)
-				}
-
-				guard string[index] == ">" else {
-					return nil
-				}
-				index = string.index(after: index)
+			if index != string.endIndex, let genericElements = parseGenerics() {
 
 				// Sometimes other types (arrays, dictionaries and optionals) can be written as
 				// generics, i.e. `Array<Int>` or `Optional<String>`.
@@ -338,11 +289,108 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 				}
 
 				// Otherwise, it's just a normal generic type
-				return .generic(typeName: normalType, genericArguments: genericElements)
+				return .generic(
+					baseType: .namedType(typeName: normalType),
+					genericArguments: genericElements)
 			}
 
 			// Otherwise, consider it a normal type
 			return .namedType(typeName: normalType)
+		}
+
+		private func parseTuple() -> ArrayClass<GryphonType>? {
+			guard string[index] == "(" else {
+				return nil
+			}
+			index = string.index(after: index)
+
+			// Check for labels before the tuple type, i.e. `(bla: Int, foo: String)` should be
+			// parsed as `(Int, String)`
+
+			let tupleElements: ArrayClass<GryphonType> = []
+
+			while string[index] != ")" {
+				// Skip the comma if necessary
+				if string[index] == "," {
+					index = string.index(after: index)
+				}
+
+				// Check for labels just as before
+				let newSubType: GryphonType
+				guard let firstAttempt = parseType() else {
+					return nil
+				}
+				if string[index] == ":" {
+					index = string.index(after: index)
+					cleanLeadingWhitespace()
+					guard let secondAttempt = parseType() else {
+						return nil
+					}
+					newSubType = secondAttempt
+				}
+				else {
+					newSubType = firstAttempt
+				}
+
+				tupleElements.append(newSubType)
+			}
+
+			guard string[index] == ")" else {
+				return nil
+			}
+			index = string.index(after: index)
+			cleanLeadingWhitespace()
+
+			return tupleElements
+		}
+
+		private func parseGenerics() -> ArrayClass<GryphonType>? {
+			// Skip the opening '<'
+			guard string[index] == "<" else {
+				return nil
+			}
+			index = string.index(after: index)
+
+			// Read the inner types
+			guard let subType1 = parseType() else {
+				return nil
+			}
+
+			let genericElements: ArrayClass<GryphonType> = [subType1]
+
+			while true {
+				if string[index] == "," {
+					// If we're reading a new type
+					index = string.index(after: index)
+
+					guard let newSubType = parseType() else {
+						return nil
+					}
+
+					genericElements.append(newSubType)
+
+					cleanLeadingWhitespace()
+				}
+				else if string[index...].hasPrefix("where ") {
+					// If we're reading a where clause, ignore it and skip to the end
+					while string[index] != ">" {
+						index = string.index(after: index)
+					}
+				}
+				else {
+					break
+				}
+			}
+
+			// Skip the closing '>'
+			guard string[index] == ">" else {
+				return nil
+			}
+			index = string.index(after: index)
+
+			cleanLeadingWhitespace()
+
+			return genericElements
 		}
 	}
 
@@ -447,17 +495,15 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 
 		// Handle generics
 		if case let .generic(
-			typeName: superTypeName,
+			baseType: superBaseType,
 			genericArguments: superTypeArguments) = superType
 		{
 			if case let .generic(
-				typeName: selfTypeName,
+				baseType: selfBaseType,
 				genericArguments: selfTypeArguments) = self
 			{
-				// Check if the named parts are the same
-				let namedSuperType = GryphonType.namedType(typeName: superTypeName)
-				let namedSelfType = GryphonType.namedType(typeName: selfTypeName)
-				guard namedSelfType.isSubtype(of: namedSuperType) else {
+				// Check if the base parts are the same
+				guard selfBaseType.isSubtype(of: superBaseType) else {
 					return false
 				}
 
@@ -490,7 +536,9 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 			}
 		}
 
-		if case let .generic(typeName: typeName, genericArguments: genericArguments) = gryphonType {
+		if case let .generic(baseType: baseType, genericArguments: genericArguments) = gryphonType,
+			case let .namedType(typeName: typeName) = baseType
+		{
 			// Treat ArrayClass and ArraySlice as Array
 			if typeName == "ArrayClass" || typeName == "ArraySlice" {
 				// ArrayClass should have exactly one generic argument, which is its element
@@ -502,8 +550,9 @@ public indirect enum GryphonType: CustomStringConvertible, CustomDebugStringConv
 				genericArguments.count == 1,
 				let genericArgument = genericArguments.first,
 				case let .generic(
-					typeName: innerTypeName,
-					genericArguments: innerGenericArguments) = genericArgument
+					baseType: innerBaseName,
+					genericArguments: innerGenericArguments) = genericArgument,
+				case let .namedType(typeName: innerTypeName) = innerBaseName
 			{
 				if innerTypeName == "ArrayClass" {
 					// ArrayClass should have exactly one generic argument, which is its element
@@ -605,10 +654,10 @@ extension GryphonType {
 		}
 	}
 
-	func getGenericTypeName() -> String? {
+	func getGenericTypeName() -> GryphonType? {
 		switch self {
-		case let .generic(typeName: typeName, genericArguments: _):
-			return typeName
+		case let .generic(baseType: baseType, genericArguments: _):
+			return baseType
 		default:
 			return nil
 		}
@@ -616,7 +665,7 @@ extension GryphonType {
 
 	func getGenericArguments() -> ArrayClass<GryphonType>? {
 		switch self {
-		case let .generic(typeName: _, genericArguments: genericArguments):
+		case let .generic(baseType: _, genericArguments: genericArguments):
 			return genericArguments
 		default:
 			return nil
