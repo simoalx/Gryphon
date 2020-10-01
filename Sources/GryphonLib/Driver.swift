@@ -94,8 +94,15 @@ public class Driver {
 
 		let badArguments = unsupportedArguments(in: arguments)
 		if !badArguments.isEmpty {
-			let argumentsString = badArguments.map { "\"\($0)\"" }.joined(separator: ", ")
-			throw GryphonError(errorMessage: "Unsupported arguments: \(argumentsString).")
+			var errorMessage = String()
+			for badArgument in badArguments {
+				errorMessage += "Unsupported argument: \(badArgument)\n"
+				let similar = similarArguments(to: badArgument)
+				if !similar.isEmpty {
+					errorMessage += "\t Did you mean any of these? \(similar.joined(separator: ", "))\n"
+				}
+			}
+			throw GryphonError(errorMessage: errorMessage)
 		}
 
 		if arguments.isEmpty ||
@@ -1339,6 +1346,13 @@ public class Driver {
 		return badArguments
 	}
 
+  static func similarArguments(to argument: String) -> List<String> {
+    var similarArguments = supportedArguments + supportedArgumentsWithParameters + debugArguments
+		similarArguments = similarArguments.filter { $0 ~= argument }
+
+		return similarArguments
+  }
+
 	static func isSupportedArgumentWithParameters(_ argument: String) -> Bool {
 		for supportedArgumentWithParameters in supportedArgumentsWithParameters {
 			if argument.hasPrefix(supportedArgumentWithParameters) {
@@ -1513,4 +1527,41 @@ Advanced translation options:
       ↪️  -avoid-unicode
             Avoid using Unicode arrows and emojis in some places.
 """
+}
+
+extension String {
+	/// The Levenshtein score normalised by the longest word length.
+	func normalisedLevenshteinDistance(to string: String)
+		-> Float {
+
+		var firstString = self.lowercased()
+		var secondString = string.lowercased()
+
+		firstString = firstString.trimmingCharacters(in: .punctuationCharacters)
+		secondString = secondString.trimmingCharacters(in: .punctuationCharacters)
+
+		let empty = [Int](repeating:0, count: secondString.count)
+		var last = [Int](0...secondString.count)
+
+		for (i, firstLetter) in firstString.enumerated() {
+			var cur = [i + 1] + empty
+			for (j, secondLetter) in secondString.enumerated() {
+				cur[j + 1] =
+					firstLetter == secondLetter ? last[j] : Swift.min(last[j], last[j + 1], cur[j])+1
+			}
+			last = cur
+		}
+
+		let lowestScore = max(firstString.count, secondString.count)
+
+		if let validDistance = last.last {
+			return  1 - (Float(validDistance) / Float(lowestScore))
+		}
+
+		return 0.0
+	}
+}
+
+func ~=(string: String, otherString: String) -> Bool {
+	return string.normalisedLevenshteinDistance(to: otherString) >= 0.70
 }
